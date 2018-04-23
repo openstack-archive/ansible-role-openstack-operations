@@ -1,0 +1,21 @@
+operations_operation: skip
+
+
+# Cleanup Docker
+operations_docker_bin: docker
+operations_docker_cleanup:
+  image_filters:
+    - dangling=true
+  volume_filters:
+    - dangling=true
+  container_filters:
+    - status=exited
+    - status=dead
+
+
+# Fetch Logs
+operations_log_destination: "{{ playbook_dir }}"
+
+
+# Restart Service
+operations_service_names: []

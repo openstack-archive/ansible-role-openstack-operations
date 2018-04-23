@@ -1,0 +1,18 @@
+- name: Find logs
+  find:
+    age: "{{ operations_logs.age | default(omit) }}"
+    contains: "{{ operations_logs.contains | default(omit) }}"
+    file_type: "{{ operations_logs.file_type | default(omit) }}"
+    follow: "{{ operations_logs.follow | default(omit) }}"
+    paths: "{{ operations_logs.paths | default('/var/log') }}"
+    patterns: "{{ operations_logs.patterns | default('*.log') }}"
+    recurse: "{{ operations_logs.recurse | default('yes') }}"
+    size: "{{ operations_logs.size | default(omit) }}"
+    use_regex: "{{ operations_logs.use_regex | default(omit) }}"
+  register: _logs
+
+- name: Fetch logs and place in {{ operations_log_destination }}
+  fetch:
+    src: "{{ item.path }}"
+    dest: "{{ operations_log_destination }}/{{ inventory_hostname }}"
+  with_items: "{{ _logs.files }}"

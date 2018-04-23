@@ -1,0 +1,29 @@
+- name: List filtered images
+  command: '{{ operations_docker_bin }} images {% for filter in operations_docker_cleanup.image_filters %}-f {{ filter }} {% endfor %}-q'
+  changed_when: no
+  check_mode: no
+  register: _dangling_images
+
+- name: Remove images
+  command: '{{ operations_docker_bin }} rmi {{ item }}'
+  with_items: "{{ _dangling_images.stdout_lines }}"
+
+- name: List filtered containers
+  command: '{{ operations_docker_bin }} ps {% for filter in operations_docker_cleanup.container_filters %}-f {{ filter }} {% endfor %} -q'
+  changed_when: no
+  check_mode: no
+  register: _dead_containers
+
+- name: Remove containers
+  command: '{{ operations_docker_bin }} rm {{ item }}'
+  with_items: "{{ _dead_containers.stdout_lines }}"
+
+- name: List filtered volumes
+  command: '{{ operations_docker_bin }} volume ls {% for filter in operations_docker_cleanup.volume_filters %}-f {{ filter }} {% endfor %} -q'
+  changed_when: no
+  check_mode: no
+  register: _dangling_volumes
+
+- name: Remove dangling volumes
+  command: "{{ operations_docker_bin }} volume rm {{ item }}"
+  with_items: "{{ _dangling_volumes }}"
