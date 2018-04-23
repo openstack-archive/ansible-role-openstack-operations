@@ -14,8 +14,39 @@ ANSIBLE_METADATA = {
     'supported_by': 'community'
 }
 
+import itertools
 
 from ansible.module_utils.basic import AnsibleModule
+
+
+def run_docker_command(module, sub_command=[], opts='-q', filters=[]):
+    docker_bin = [module.get_bin_path('docker', True)]
+
+    if not isinstance(docker_bin, list):
+        docker_bin = docker_bin.split()
+
+    if not isinstance(sub_command, list):
+        sub_command = sub_command.split()
+
+    if not isinstance(opts, list):
+        opts = opts.split()
+
+    if not isinstance(filters, list):
+        filters = filters.split()
+
+    filters = ['-f ' + i for i in filters]
+    command = list(itertools.chain(docker_bin, sub_command, opts, filters))
+    rc, out, err = module.run_command(command)
+
+    if rc != 0:
+        module.fail_json(msg=err)
+
+    if out == '':
+        out = []
+    else:
+        out = out.strip().split('\n')
+
+    return rc, out, err
 
 
 def main():
@@ -27,45 +58,32 @@ def main():
         )
     )
 
-    docker_bin = module.get_bin_path('docker', True)
     docker_facts = {}
 
     # Images
-    command = [docker_bin, 'images', '-q']
-    command_opts = ['-f ' + i for i in module.params['image_filter']]
-    command.extend(command_opts)
-    rc, out, err = module.run_command(command)
-    if out == '':
-        images = []
-    else:
-        images = out.strip().split('\n')
+    rc, images, err = run_docker_command(module, sub_command='images')
+    docker_facts['images'] = images
+
+    rc, images, err = run_docker_command(module, sub_command='images', filters=module.params['image_filter'])
     docker_facts['filtered_images'] = images
 
     # Volumes
-    command = [docker_bin, 'volume', 'ls', '-q']
-    command_opts = ['-f ' + i for i in module.params['volume_filter']]
-    command.extend(command_opts)
-    rc, out, err = module.run_command(command)
-    if out == '':
-        volumes = []
-    else:
-        volumes = out.strip().split('\n')
+    rc, volumes, err = run_docker_command(module, sub_command='volume ls', filters=module.params['volume_filter'])
+    docker_facts['volumes'] = volumes
+
+    rc, volumes, err = run_docker_command(module, sub_command='volume ls')
     docker_facts['filtered_volumes'] = volumes
 
     # Containers
-    command = [docker_bin, 'ps', '-q']
-    command_opts = ['-f ' + i for i in module.params['container_filter']]
-    command.extend(command_opts)
-    rc, out, err = module.run_command(command)
-    if out == '':
-        containers = []
-    else:
-        containers = out.strip().split('\n')
+    rc, containers, err = run_docker_command(module, sub_command='ps')
+    docker_facts['containers'] = containers
+
+    rc, containers, err = run_docker_command(module, sub_command='ps -a', filters=module.params['container_filter'])
     docker_facts['filtered_containers'] = containers
 
     results = dict(
         ansible_facts=dict(
-            docker_facts=docker_facts
+            docker=docker_facts
         )
     )
 
