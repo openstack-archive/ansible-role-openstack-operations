@@ -1,0 +1,23 @@
+- name: Gather Docker facts
+  docker_facts:
+    image_filter: "{{ operations_image_filter }}"
+    volume_filter: "{{ operations_volume_filter }}"
+    container_filter: "{{ operations_container_filter }}"
+
+- name: Remove images
+  docker_image:
+    name: "{{ item }}"
+    state: absent
+  loop: "{{ docker_facts.images }}"
+
+- name: Remove containers
+  docker_container:
+    name: "{{ item }}"
+    state: absent
+  loop: "{{ docker_facts.containers }}"
+
+- name: Remove dangling volumes
+  docker_volume:
+    name: "{{ item }}"
+    state: absent
+  loop: "{{ docker_facts.volumes }}"

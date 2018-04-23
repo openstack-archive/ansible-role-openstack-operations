@@ -1,16 +1,12 @@
-operations_operation: skip
-
-
 # Cleanup Docker
 operations_docker_bin: docker
-operations_docker_cleanup:
-  image_filters:
-    - dangling=true
-  volume_filters:
-    - dangling=true
-  container_filters:
-    - status=exited
-    - status=dead
+operations_image_filters:
+  - dangling=true
+operations_volume_filters:
+  - dangling=true
+operations_container_filters:
+  - status=exited
+  - status=dead
 
 
 # Fetch Logs

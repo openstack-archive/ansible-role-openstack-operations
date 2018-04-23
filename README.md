@@ -11,17 +11,10 @@ None
 Role Variables
 --------------
 
-**General Variables**
-
-| Name              | Default Value       | Description          |
-|-------------------|---------------------|----------------------|
-| `operations_task` | `skip` | Task file to include and run. See `tasks/` for available options. |
-
 **Variables used for cleaning up Docker**
 
 | Name              | Default Value       | Description          |
 |-------------------|---------------------|----------------------|
-| `operations_docker_bin` | `docker` | Path to `docker` binary. |
 | `operations_docker_cleanup` | [see `defaults/main.yml`] | Filters used to determine which items will be removed. Uses Docker filter syntax. See Docker guides for [images](https://docs.docker.com/engine/reference/commandline/images/#filtering), [containers](https://docs.docker.com/engine/reference/commandline/ps/#filtering), and [volumes](https://docs.docker.com/engine/reference/commandline/volume_ls/#filtering) for filter options. |
 
 **Variables for fetching logs**
@@ -49,30 +42,23 @@ Example Playbook
         - name: Restart a service
           import_role:
             name: openstack-operations
+            tasks_from: restart_service.yml
           vars:
             operations_task: restart_service
-            operations_service_list:
+            operations_service_names:
               - docker
               - keystone
               - mariadb
 
-        - name: Cleanup unused Docker images
+        - name: Cleanup unused Docker images, containers, and volumes
           import_role:
             name: openstack-operations
-          vars:
-            operations_task: cleanup_images
+            tasks_from: cleanup_docker.yml
 
         - name: Fetch logs
           import_role:
             name: openstack-operations
-          vars:
-            operations_task: fetch_logs
-
-        - name: List running services
-          import_role:
-            name: list_services
-          vars:
-            operations_task: fetch_logs
+            tasks_from: fetch_logs.yml
 
 License
 -------

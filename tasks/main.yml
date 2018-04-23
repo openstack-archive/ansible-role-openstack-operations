@@ -1,3 +1,0 @@
-- include_tasks: "{{ operations_task }}.yml"
-  tags:
-    - operations

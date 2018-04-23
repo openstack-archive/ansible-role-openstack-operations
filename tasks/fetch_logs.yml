@@ -14,5 +14,5 @@
 - name: Fetch logs and place in {{ operations_log_destination }}
   fetch:
     src: "{{ item.path }}"
-    dest: "{{ operations_log_destination }}/{{ inventory_hostname }}"
+    dest: "{{ operations_log_destination }}"
   with_items: "{{ _logs.files }}"
