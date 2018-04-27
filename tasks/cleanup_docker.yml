@@ -8,16 +8,16 @@
   docker_image:
     name: "{{ item }}"
     state: absent
-  loop: "{{ docker.filtered_images }}"
+  loop: "{{ docker.images_filtered }}"
 
 - name: Remove containers
   docker_container:
     name: "{{ item }}"
     state: absent
-  loop: "{{ docker.filtered_containers }}"
+  loop: "{{ docker.containers_filtered }}"
 
 - name: Remove dangling volumes
   docker_volume:
     name: "{{ item }}"
     state: absent
-  loop: "{{ docker.filtered_volumes }}"
+  loop: "{{ docker.volumes_filtered }}"
