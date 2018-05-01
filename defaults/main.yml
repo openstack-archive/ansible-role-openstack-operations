@@ -1,5 +1,4 @@
 # Cleanup Docker
-operations_docker_bin: docker
 operations_image_filters:
   - dangling=true
 operations_volume_filters:
@@ -11,6 +10,16 @@ operations_container_filters:
 
 # Fetch Logs
 operations_log_destination: "{{ playbook_dir }}"
+operations_logs:
+  # age:
+  # contains:
+  # file_type:
+  # follow:
+  paths: /var/log
+  patterns: '*.log'
+  recurse: yes
+  # size:
+  # use_regex:
 
 
 # Restart Service
