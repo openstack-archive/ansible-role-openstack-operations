@@ -8,11 +8,91 @@ from __future__ import absolute_import, division, print_function
 __metaclass__ = type
 
 
-ANSIBLE_METADATA = {
-    'metadata_version': '1.1',
-    'status': ['preview'],
-    'supported_by': 'community'
-}
+ANSIBLE_METADATA = {'metadata_version': '1.1',
+                    'status': ['preview'],
+                    'supported_by': 'community'}
+
+DOCUMENTATION = """
+---
+module: docker_facts
+author:
+    - Sam Doran (@samdoran)
+version_added: '2.6'
+short_description: Gather list of volumes, images, containers
+notes:
+    - When specifying mulitple filters, only assets matching B(all) filters
+      will be returned.
+description:
+    - Gather a list of volumes, images, and containers on a running system
+    - Return both filtered and unfiltered lists of volumes, images,
+      and containers.
+options:
+    image_filter:
+        description:
+            - List of k=v pairs to use as a filter for images.
+        type: list
+        required: false
+    volume_filter:
+        description:
+            - List of k=v pairs to use as a filter for volumes.
+        type: list
+        required: false
+    container_filter:
+        description:
+            - List of k=v pairs to use as a filter for containers.
+        type: list
+        required: false
+
+"""
+
+EXAMPLES = """
+- name: Gather Docker facts
+  docker_facts:
+
+- name: Gather filtered Docker facts
+  docker_facts:
+    image_filter:
+      - dangling=true
+    volume_filter:
+      - dangling=true
+    container_filter:
+      - status=exited
+      - status=dead
+"""
+
+RETURN = """
+docker_facts:
+  description: >
+    Lists of container, volume, and image UUIDs,
+    both filtered and unfiltered.
+  returned: always
+  type: complex
+  contains:
+    containers:
+        description: List of container UUIDs
+        returned: always
+        type: list
+    containers_filtered:
+        description: List of UUIDs that matched the filter(s)
+        returned: always
+        type: list
+    images:
+        description: List of image UUIDs
+        returned: always
+        type: list
+    images_filtered:
+        description: List of UUIDs that matched the filter(s)
+        returned: always
+        type: list
+    volumes:
+        description: List of volume UUIDs
+        returned: always
+        type: list
+    volumes_filtered:
+        description: List of UUIDs that matched the filter(s)
+        returned: always
+        type: list
+"""
 
 import itertools
 
@@ -26,7 +106,11 @@ DOCKER_SUBCOMMAND_LOOKUP = dict(
 
 
 def run_docker_command(
-        module, docker_bin, sub_command=[], opts='-q', filters=[]):
+        module,
+        docker_bin,
+        sub_command=[],
+        opts='-q',
+        filters=[]):
 
     for item in docker_bin, sub_command, opts, filters:
         if not isinstance(item, list):
@@ -78,7 +162,7 @@ def main():
 
     for key, value in DOCKER_SUBCOMMAND_LOOKUP.items():
         docker_facts[key] = []
-        docker_facts[key.rstrip('s') + '_filter'] = []
+        docker_facts[key.rstrip('s') + '_filtered'] = []
 
     if docker_bin[0]:
 
