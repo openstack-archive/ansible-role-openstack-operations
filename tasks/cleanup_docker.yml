@@ -14,7 +14,7 @@
   docker_container:
     name: "{{ item }}"
     state: absent
-  loop: "{{ docker.containers_filtered }}"
+  loop: "{{ docker.containers_filtered | map(attribute='id') | list }}"
 
 - name: Remove dangling volumes
   docker_volume:
