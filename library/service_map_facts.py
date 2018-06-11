@@ -51,7 +51,7 @@ def get_systemd_services(module, service_unit_list):
             state_val = "enabled"
         else:
             state_val = "disabled"
-        systemd_list.append({"name": i,  "state": state_val})
+        systemd_list.append({"name": i, "state": state_val})
     return systemd_list
 
 
@@ -66,8 +66,8 @@ def run_module():
         supports_check_mode=True
     )
 
-    service_map = module.params.get('operations_service_map')
-    service_names = module.params.get('operations_service_names')
+    service_map = module.params.get('service_map')
+    service_names = module.params.get('services')
 
     services_to_restart = {i: service_map[i] for i in service_names}
 
@@ -78,8 +78,10 @@ def run_module():
 
     result = dict(
         ansible_facts=dict(
-            docker_containers=get_docker_containers(module, container_list),
-            systemd_services=get_systemd_services(module, service_unit_list),
+            docker_containers_to_restart=get_docker_containers(
+                module, container_list),
+            systemd_services_to_restart=get_systemd_services(
+                module, service_unit_list),
         )
     )
 
@@ -95,4 +97,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
