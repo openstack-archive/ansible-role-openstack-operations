@@ -23,4 +23,5 @@ operations_logs:
 
 
 # Restart Service
-operations_service_names: []
+operations_services_to_restart: []
+operations_custom_service_map: {}

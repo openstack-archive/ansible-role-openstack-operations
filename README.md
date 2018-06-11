@@ -25,7 +25,6 @@ See Docker guides for [images](https://docs.docker.com/engine/reference/commandl
 ## Requirements ##
 
  - ansible >= 2.4
- - python >= 2.6
  - docker-py >= 1.7.0
  - Docker API >= 1.20
 
@@ -51,7 +50,8 @@ See Docker guides for [images](https://docs.docker.com/engine/reference/commandl
 
 | Name              | Default Value       | Description          |
 |-------------------|---------------------|----------------------|
-| `operations_service_names` | `[]` | List of services to restart on target systems. |
+| `operations_services_to_restart` | `[]` | List of services to restart on target systems. |
+| `operations_custom_service_map` | `{}` | Dictionary of services and their systemd unit files, container names, and vhosts. This will be combined with the builtin list of services in `vars/main.yml`. |
 
 
 ## Dependencies ##
@@ -70,7 +70,7 @@ None
             name: openstack-operations
             tasks_from: restart_service.yml
           vars:
-            operations_service_names:
+            operations_services_to_restart:
               - docker
               - keystone
               - mariadb
