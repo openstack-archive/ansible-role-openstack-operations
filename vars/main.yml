@@ -1,0 +1,2 @@
+include: tripleo-service-mapping.yaml
+operations_custom_service_map: {}

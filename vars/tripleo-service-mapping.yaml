@@ -1,0 +1,191 @@
+operations_default_service_map:
+  aodh:
+    systemd_unit:
+      - openstack-aodh-evaluator
+      - openstack-aodh-listener
+      - openstack-aodh-notifier
+    container_name:
+      - aodh_api
+      - aodh_evaluator
+      - aodh_listener
+      - aodh_notifier
+    vhost:
+      - aodh
+      - aodh_wsgi
+  barbican:
+    systemd_unit:
+      - openstack-barbican-api
+    vhost: ""
+  ceilometer:
+  ceilometer-agent:
+    systemd_unit:
+      - openstack-ceilometer-central
+      - openstack-ceilometer-compute
+      - openstack-ceilometer-polling
+      - openstack-ceilometer-ipmi ???
+      - openstack-ceilometer-notification
+    container_name:
+      - ceilometer_agent_central
+      - ceilometer_agent_notification
+  cinder:
+    systemd_unit:
+      - openstack-cinder-api
+      - openstack-cinder-scheduler
+      - openstack-cinder-volume
+    container_name:
+      - cinder_api
+      - cinder_api_cron
+      - cinder_scheduler
+      - cinder_volume
+    vhost: ""
+  congress:
+    systemd_unit:
+      - openstack-congress-server
+    container_name:
+    vhost: ""
+    type: ""
+  glance:
+    systemd_unit:
+      - openstack-glance-api
+    container_name:
+      - glance_api
+    vhost: ""
+  gnocchi:
+    systemd_unit:
+      - openstack-gnocchi-api
+    container_name:
+      - gnocchi_api
+      - gnocchi_metricd
+      - gnocchi_statsd
+    vhost:
+      - gnocchi
+  haproxy:
+    systemd_unit:
+      - haproxy
+    container_name:
+      - haproxy
+  heat:
+    systemd_unit:
+      - openstack-heat-api
+      - openstack-heat-engine
+      - openstack-heat-api-cfn
+    container_name:
+      - heat_api
+      - heat_api_cfn
+      - heat_api_cron
+      - heat_engine
+
+    vhost:
+      - heat_api_wsgi
+  horizon:
+    systemd_unit: ""
+    container_name:
+    vhost:
+      - horizon_vhost
+  ironic:
+    systemd_unit:
+      - openstack-ironic-api
+      - openstack-ironic-conductor
+    container_name:
+    vhost:
+      - ironic
+  keepalived:
+    systemd_unit:
+      - keepalived
+    container_name:
+      - keepalived
+  keystone:
+    systemd_unit: ""
+    container_name:
+    vhost:
+      - keystone_wsgi
+  manila:
+    systemd_unit:
+      - openstack-manila-scheduler
+      - openstack-manila-share
+    container_name:
+    vhost: ""
+  mistral:
+    systemd_unit:
+      - openstack-mistral-api
+      - openstack-mistral-engine
+      - openstack-mistral-event-engine
+      - openstack-mistral-executor
+    container_name:
+    vhost:
+      - mistral
+  memcached:
+    systemd_unit:
+      - memcached
+    container_name:
+      - memcached
+  mysql:
+    systemd_unit: mariadb
+    container_name:
+      - mysql
+  neutron:
+    TODO
+  nova: TODO compute v controller
+  nova-controller:
+    systemd_unit:
+      - openstack-nova-api
+      - openstack-nova-conductor
+      - openstack-nova-consoleauth
+      - openstack-nova-scheduler
+      - openstack-nova-novncproxy
+    container_name:
+    vhost:
+      - nova
+      - placement_wsgi
+  nova-compute:
+    systemd_unit:
+      - openstack-nova-compute
+      - libvirtd
+    container_name:
+    vhost: ""
+  octavia:
+  openvswitch:
+    systemd_unit:
+      - openvswitch
+      - ovs-vswitchd
+    container_name:
+      - ""
+  rabbitmq:
+    systemd_unit:
+      - rabbitmq-server
+    container_name:
+      - rabbitmq
+  redis:
+    systemd_unit:
+      - redis
+    container_name:
+      - redis
+  swift:
+    systemd_unit:
+      - ""
+    container_name:
+      - swift_account_auditor
+      - swift_account_reaper
+      - swift_account_replicator
+      - swift_account_server
+      - swift_container_auditor
+      - swift_container_replicator
+      - swift_container_server
+      - swift_container_updater
+      - swift_object_auditor
+      - swift_object_expirer
+      - swift_object_replicator
+      - swift_object_server
+      - swift_object_updater
+      - swift_proxy
+      - swift_rsync
+  tripleo-ui:
+    systemd_unit:
+    container_name:
+    vhost:
+      - tripleo-ui
+  zaqar:
+    systemd_unit: ""
+    container_name:
+    vhost:
+      - zaqar_wsgi
