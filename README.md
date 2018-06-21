@@ -3,9 +3,13 @@
 
 Perform various common OpenStack operations by calling this role with an action and appropriate variables.
 
-## [WIP] Restart Services ##
+## Restart Services ##
 
-Restarting OpenStack service is complex. This role aims to intelligently evaluate the environment and determine how a service is running, what components constitute that service, and restart those components appropriately. This allows the operator to think in terms of the service that needs restarting rather than having to remember all the details required to restart that service.
+Restarting OpenStack services is complex. This role aims to intelligently evaluate the environment and determine how a service is running, what components constitute that service, and restart those components appropriately. This allows the operator to think in terms of the service that needs restarting rather than having to remember all the details required to restart that service.
+
+This role uses a service map located in `vars/main.yml`. The service map is a dictionary with one key per service name. Each service name key contains three additional keys that list the SystemD unit files, container names, and vhosts used by each service. It is possible to extend this list of services by defining custom services in `operations_custom_service_map`. This will be combined with the default service map and passed to the `service_map_facts` module.
+
+The `service_map_facts` module will evalute the target system and return a list of services or containers that need to be restarted. Those lists will then be used in subsequent tasks to restart a service or a container.
 
 ## Fetch Logs ##
 
