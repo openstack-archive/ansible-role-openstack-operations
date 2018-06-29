@@ -22,7 +22,7 @@ operations_service_map:
       - openstack-ceilometer-central
       - openstack-ceilometer-compute
       - openstack-ceilometer-polling
-      - openstack-ceilometer-ipmi ???
+      - openstack-ceilometer-ipmi
       - openstack-ceilometer-notification
     container_name:
       - ceilometer_agent_central
@@ -80,6 +80,7 @@ operations_service_map:
   horizon:
     systemd_unit: ""
     container_name:
+      - horizon
     vhost:
       - horizon_vhost
   ironic:
@@ -124,8 +125,21 @@ operations_service_map:
     container_name:
       - mysql
   neutron:
-    TODO
-  nova: TODO compute v controller
+    systemd_unit: ""
+    container_name:
+      - neutron_ovs_agent
+      - neutron_l3_agent
+      - neutron_metadata_agent
+      - neutron_dhcp
+  nova-compute:
+    systemd_unit:
+      - openstack-nova-compute
+      - libvirtd
+    container_name:
+      - nova_migration_target
+      - nova_compute
+      - nova_libvirt
+      - nova_virtlogd
   nova-controller:
     systemd_unit:
       - openstack-nova-api
@@ -134,22 +148,26 @@ operations_service_map:
       - openstack-nova-scheduler
       - openstack-nova-novncproxy
     container_name:
+      - nova_metadata
+      - nova_api
+      - nova_vnc_proxy
+      - nova_conductor
+      - nova_consoleauth
+      - nova_api_cron
+      - nova_scheduler
+      - nova_placement
     vhost:
       - nova
       - placement_wsgi
-  nova-compute:
-    systemd_unit:
-      - openstack-nova-compute
-      - libvirtd
-    container_name:
-    vhost: ""
   octavia:
+    systemd_unit: ""
+    container_name: ""
   openvswitch:
     systemd_unit:
       - openvswitch
       - ovs-vswitchd
     container_name:
-      - ""
+      - neutron_ovs_agent
   rabbitmq:
     systemd_unit:
       - rabbitmq-server
