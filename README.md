@@ -39,9 +39,9 @@ See Docker guides for [images](https://docs.docker.com/engine/reference/commandl
 
 | Name              | Default Value       | Description          |
 |-------------------|---------------------|----------------------|
-| `operations_image_filters` | `['dangling=true']` | List of image filters. |
-| `operations_volume_filters` | `['dangling=true']` | List of volume filters. |
-| `operations_container_filters` | `['status=exited', 'status=dead']` | List of container filters. |
+| `operations_image_filter` | `['dangling=true']` | List of image filters. |
+| `operations_volume_filter` | `['dangling=true']` | List of volume filters. |
+| `operations_container_filter` | `['status=exited', 'status=dead']` | List of container filters. |
 
 **Variables for fetching logs**
 

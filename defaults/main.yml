@@ -1,9 +1,9 @@
 # Cleanup Docker
-operations_image_filters:
+operations_image_filter:
   - dangling=true
-operations_volume_filters:
+operations_volume_filter:
   - dangling=true
-operations_container_filters:
+operations_container_filter:
   - status=exited
   - status=dead
 
