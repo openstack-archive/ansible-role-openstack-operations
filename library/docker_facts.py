@@ -1,8 +1,19 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-# (c) 2018 Ansible Project
-# GNU General Public License v3.0+
-# (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+# Copyright (c) 2018 OpenStack Foundation
+# All Rights Reserved.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+#    under the License.
 
 from __future__ import absolute_import
 from __future__ import division
@@ -72,7 +83,7 @@ EXAMPLES = """
 RETURN = """
 docker:
   description: >
-    Lists of container, volume, and image UUIDs,
+    Lists of container, volume, and image IDs,
     both filtered and unfiltered.
   returned: always
   type: complex
@@ -105,127 +116,111 @@ docker:
         type: list
 """
 
-import itertools
-
-from ansible.module_utils.basic import AnsibleModule
-
-DOCKER_SUBCOMMAND_LOOKUP = [
-    ('images', 'images', '-q'),
-    ('volumes', 'volume ls', '-q'),
-    ('containers', 'ps -a', '--format {{.Names}}##{{.ID}}##{{.Status}}')
-]
+from ansible.module_utils.docker_common import AnsibleDockerClient
 
 
-def run_docker_command(
-        module,
-        docker_bin,
-        sub_command=[],
-        opts='-q',
-        filters=[]):
+def _list_or_dict(value):
+    if isinstance(value, list):
+        return value
+    elif isinstance(value, dict):
+        return value
+    raise TypeError
 
-    for item in docker_bin, sub_command, opts, filters:
-        if not isinstance(item, list):
-            item = item.split('\n')
 
-    if not isinstance(docker_bin, list):
-        docker_bin = docker_bin.split()
+def _to_dict(client, filters):
+    filter_dict = {}
+    if isinstance(filters, list):
+        for item in filters:
+            a = item.split('=')
+            filter_dict[a[0]] = a[1]
+        return filter_dict
+    elif isinstance(filters, str):
+        a = filters.split('=')
+        filter_dict[a[0]] = a[1]
+        return filter_dict
+    elif isinstance(filters, dict):
+        return filters
 
-    if not isinstance(sub_command, list):
-        sub_command = sub_command.split()
 
-    if not isinstance(opts, list):
-        opts = opts.split()
-
-    if not isinstance(filters, list):
-        filters = filters.split()
-
-    filters = ['-f ' + i for i in filters]
-    command = list(itertools.chain(docker_bin, sub_command, opts, filters))
-    rc, out, err = module.run_command(command)
-
-    if rc != 0:
-        module.fail_json(
-            msg='Error running command {}.\n\n \
-                 Original error:\n\n{}'.format(command, err))
-
-    if out == '':
-        out = []
+def get_facts(client, docker_type, filters=None):
+    result = []
+    function_to_call = globals()['get_{}'.format(docker_type)]
+    if filters and len(filters) > 1:
+        for f in filters:
+            result.extend(function_to_call(client, f))
     else:
-        out = out.strip().split('\n')
+        result = function_to_call(client, filters)
+    return result
 
-    return rc, out, err
+
+def get_images(client, filters=None):
+    result = []
+    if filters:
+        filters = _to_dict(client, filters)
+    images = client.images(filters=filters)
+    if images:
+        images = [i['Id'].strip('sha256:') for i in images]
+        result = images
+    return result
+
+
+def get_containers(client, filters=None):
+    result = []
+    if filters:
+        filters = _to_dict(client, filters)
+    containers = client.containers(filters=filters)
+    if containers:
+        containers = [c['Id'].strip('sha256:') for c in containers]
+        result = containers
+    return result
+
+
+def get_volumes(client, filters=None):
+    result = []
+    if filters:
+        filters = _to_dict(client, filters)
+    volumes = client.volumes(filters=filters)
+    if volumes['Volumes']:
+        volumes = [v['Name'] for v in volumes['Volumes']]
+        result = volumes
+    return result
 
 
 def main():
-    module = AnsibleModule(
-        argument_spec=dict(
-            image_filter=dict(type='list', default=[]),
-            volume_filter=dict(type='list', default=[]),
-            container_filter=dict(type='list', default=[]),
-        ),
-
-        supports_check_mode=True
+    argument_spec = dict(
+        image_filter=dict(type=list, default=[]),
+        volume_filter=dict(type=list, default=[]),
+        container_filter=dict(type=list, default=[]),
     )
 
-    docker_bin = [module.get_bin_path('docker')]
+    docker_client = AnsibleDockerClient(
+        argument_spec=argument_spec,
+        supports_check_mode=True,
+    )
 
     docker_facts = {}
 
-    for item in DOCKER_SUBCOMMAND_LOOKUP:
-        docker_facts[item[0]] = []
-        docker_facts[item[0] + '_filtered'] = []
+    types_to_get = ['volumes', 'images', 'containers']
 
-    if docker_bin[0]:
+    for t in types_to_get:
+        singular = t.rstrip('s')
+        filter_key = '{}_filter'.format(singular)
 
-        docker_facts[item[0]] = []
+        docker_facts[t] = get_facts(docker_client, t)
 
-        # Run each Docker command
-        for item in DOCKER_SUBCOMMAND_LOOKUP:
-            rc, out, err = run_docker_command(
-                module,
-                docker_bin,
-                sub_command=item[1],
-                opts=item[2])
+        filters = docker_client.module.params[filter_key]
 
-            # For everything but containers, return just the UIDs
-            if item[0] != 'containers':
-                docker_facts[item[0]] = out
-            elif item[0] == 'containers':
-
-                # For containers, use a custom format to get name, id,
-                # and status
-                for line in out:
-                    container_name, container_id, container_status = \
-                        line.split('##')
-                    container_status = container_status.split()[0]
-                    docker_facts[item[0]].append({
-                        'name': container_name,
-                        'id': container_id,
-                        'status': container_status
-                    })
-
-            # Get filtered facts
-            rc, out, err = run_docker_command(
-                module,
-                docker_bin,
-                sub_command=item[1],
-                opts=item[2],
-                filters=module.params[item[0].rstrip('s') + '_filter']
+        # Ensure we got a list of k=v filters
+        if filters and len(filters[0]) <= 1:
+            docker_client.module.fail_json(
+                msg='The supplied {filter_key} does not appear to be a list of'
+                ' k=v filters: {filter_value}'.format(
+                    filter_key=filter_key, filter_value=filters)
             )
-
-            if item[0] != 'containers':
-                docker_facts[item[0] + '_filtered'] = out
-            elif item[0] == 'containers':
-
-                for line in out:
-                    container_name, container_id, container_status = \
-                        line.split('##')
-                    container_status = container_status.split()[0]
-                    docker_facts[item[0] + '_filtered'].append({
-                        'name': container_name,
-                        'id': container_id,
-                        'status': container_status
-                    })
+        else:
+            docker_facts['{}_filtered'.format(t)] = get_facts(
+                docker_client, t,
+                filters=docker_client.module.params[filter_key])
 
     results = dict(
         ansible_facts=dict(
@@ -233,7 +228,7 @@ def main():
         )
     )
 
-    module.exit_json(**results)
+    docker_client.module.exit_json(**results)
 
 
 if __name__ == '__main__':
