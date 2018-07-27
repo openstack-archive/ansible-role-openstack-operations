@@ -57,8 +57,8 @@ def get_systemd_services(module, service_unit_list):
 
 def run_module():
 
-    module_args = dict(operations_service_map=dict(type=dict, required=True),
-                       operations_service_names=dict(type=list, required=True),
+    module_args = dict(service_map=dict(type=dict, required=True),
+                       services=dict(type=list, required=True),
                        )
 
     module = AnsibleModule(
