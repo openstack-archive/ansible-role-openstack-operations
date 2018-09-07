@@ -1,4 +1,5 @@
-# Cleanup Docker
+# Cleanup Container
+operations_container_runtime: docker
 operations_image_filter:
   - dangling=true
 operations_volume_filter:
