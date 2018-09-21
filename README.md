@@ -27,6 +27,9 @@ This role includes modules for listing image, volume, and container IDs. The fil
 
 If using Docker, see these guides for [images](https://docs.docker.com/engine/reference/commandline/images/#filtering), [containers](https://docs.docker.com/engine/reference/commandline/ps/#filtering), and [volumes](https://docs.docker.com/engine/reference/commandline/volume_ls/#filtering) for filter options.
 
+## Backup and Restore Operations ##
+
+See [Backup and Restore Operations](README-backup-ops.md) for more details.
 
 ## Requirements ##
 

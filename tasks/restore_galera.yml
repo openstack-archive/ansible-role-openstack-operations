@@ -1,0 +1,171 @@
+# Tasks for restoring a MySQL backup on a galera cluster
+
+- name: Make sure mysql client is installed on the Target Hosts
+  yum:
+    name: mariadb
+    state: installed
+
+- name: Get the galera container image if not user-defined
+  command: "/bin/bash docker ps --filter name=.*galera.* --format='{{ '{{' }} .Image {{ '}}' }}'"
+  when: galera_container_image is undefined
+  register: galera_container_image_cmd_output
+  become: true
+
+- name: Convert the galera container image variable if unknown
+  set_fact:
+    galera_container_image: "{{ galera_container_image_cmd_output.stdout_lines[0] }}"
+  when: galera_container_image is undefined
+
+- name: Get the database root password
+  script: |
+    /bin/hiera -c /etc/puppet/hiera.yaml mysql::server::root_password
+  when: mysql_root_password is undefined
+  register: mysql_root_password_cmd_output
+  become: true
+
+- name: Convert the database root password variable if unknown
+  set_fact:
+    mysql_root_password: "{{ mysql_root_password_cmd_output.stdout_lines[0] }}"
+  when: mysql_root_password is undefined
+
+- name: Get the database clustercheck password
+  script: |
+    /bin/hiera -c /etc/puppet/hiera.yaml mysql_clustercheck_password
+  when: mysql_clustercheck_password is undefined
+  register: mysql_clustercheck_password_cmd_output
+  become: true
+
+- name: Convert the database clustercheck password variable if unknown
+  set_fact:
+    mysql_clustercheck_password: "{{ mysql_clustercheck_password_cmd_output.stdout_lines[0] }}"
+  when: mysql_clustercheck_password is undefined
+
+- name: Remove any existing database backup directory
+  file:
+    path: /var/tmp/openstack-backup/mysql
+    state: absent
+  when: bootstrap_node == true
+
+- name: Create a new mysql database backup directory
+  file:
+    path: /var/tmp/openstack-backup/mysql
+    state: directory
+  when: bootstrap_node == true
+
+- name: Copy MySQL backup archive from the backup server
+  synchronize:
+    mode: push
+    src: "{{ backup_directory | default('~/.') }}/openstack-backup-mysql.tar"
+    dest: /var/tmp/openstack-backup/mysql/
+    set_remote_user: false
+    ssh_args: "-F /var/tmp/{{ ansible_hostname }}_config"
+  delegate_to: "{{ hostvars[groups[backup_server_hostgroup][0]]['inventory_hostname'] }}"
+  when: bootstrap_node == true
+
+- name: Unarchive the database archive
+  script: |
+    /bin/tar --xattrs \
+      -zxf /var/tmp/openstack-backup/mysql/openstack-backup-mysql.tar \
+      -C /
+  when: bootstrap_node == true
+
+- name: Get the database bind host IP on each node
+  script: |
+    /bin/hiera -c /etc/puppet/hiera.yaml mysql_bind_host
+  when: mysql_bind_host is undefined
+  register: mysql_bind_host
+  become: true
+
+- name: Temporarily disable to database port from external access on each node
+  iptables:
+    chain: 'INPUT'
+    destination: "{{ mysql_bind_host.stdout|trim }}"
+    destination_port: 3306
+    protocol: tcp
+    jump: DROP
+  become: true
+
+- name: Disable galera-bundle
+  pacemaker_resource:
+    resource: galera-bundle
+    state: disable
+    wait_for_resource: true
+  become: true
+  when: bootstrap_node == true
+
+- name: Get a timestamp
+  set_fact:
+    timestamp: "{{ ansible_date_time.iso8601_basic_short }}"
+
+- name: Create directory for the old MySQL database
+  file:
+    path: /var/tmp/openstack-backup/mysql-old-{{ timestamp }}
+    state: directory
+
+- name: Copy old MySQL database
+  synchronize:
+    src: "/var/lib/mysql/"
+    dest: "/var/tmp/openstack-backup/mysql-old-{{ timestamp }}/"
+  delegate_to: "{{ inventory_hostname }}"
+  become: true
+
+- name: Create a temporary directory for database creation script
+  file:
+    path: /var/tmp/galera-restore
+    state: directory
+
+- name: Create MySQL backup script
+  template:
+    src: create_new_db.sh.j2
+    dest: /var/tmp/galera-restore/create_new_db.sh
+    mode: u+rwx
+
+- name: Create a galera restore container, remove the old database, and create a new empty database
+  docker_container:
+    name: galera_restore
+    detach: false
+    command: "/var/tmp/galera-restore/create_new_db.sh"
+    image: "{{ galera_container_image }}"
+    volumes:
+      - /var/lib/mysql:/var/lib/mysql:rw
+      - /var/tmp/galera-restore:/var/tmp/galera-restore:ro
+  become: true
+
+- name: Remove galera restore container
+  docker_container:
+    name: galera_restore
+    state: absent
+  become: true
+
+- name: Enable galera
+  pacemaker_resource:
+    resource: galera-bundle
+    state: enable
+    wait_for_resource: true
+  become: true
+  when: bootstrap_node == true
+
+- name: Perform a local database port check
+  wait_for:
+    port: 3306
+    host: "{{ mysql_bind_host.stdout|trim }}"
+
+- name: Import OpenStack MySQL data
+  script: |
+    /bin/mysql -u root -p{{ mysql_root_password }} < /var/tmp/openstack-backup/mysql/openstack-backup-mysql.sql
+  when: bootstrap_node == true
+
+- name: Import OpenStack MySQL grants data
+  script: |
+    /bin/mysql -u root -p{{ mysql_root_password }} < /var/tmp/openstack-backup/mysql/openstack-backup-mysql-grants.sql
+  when: bootstrap_node == true
+
+- name: Re-enable the database port externally
+  iptables:
+    chain: 'INPUT'
+    destination: "{{ mysql_bind_host.stdout|trim }}"
+    destination_port: 3306
+    protocol: tcp
+    jump: DROP
+    state: absent
+  become: true

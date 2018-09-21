@@ -1,0 +1,11 @@
+- name: Remove Backup Host authorized key on the OpenStack nodes
+  authorized_key:
+    user: root
+    state: absent
+    key: "{{ hostvars[groups[backup_server_hostgroup][0]]['backup_ssh_key']['content'] | b64decode }}"
+
+- name: Remove temporary SSH config for each OpenStack node on Backup Host
+  file:
+    path: /var/tmp/{{ ansible_hostname }}_config
+    state: absent
+  delegate_to: "{{ hostvars[groups[backup_server_hostgroup][0]]['inventory_hostname'] }}"

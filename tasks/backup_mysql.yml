@@ -1,0 +1,61 @@
+# Tasks for dumping a MySQL backup on a single host and pulling it to the\
+# Backup Server.
+
+- name: Make sure mysql client is installed on the Target Hosts
+  yum:
+    name: mariadb
+    state: installed
+
+- name: Remove any existing database backup directory
+  file:
+    path: /var/tmp/openstack-backup/mysql
+    state: absent
+
+- name: Create a new MySQL database backup directory
+  file:
+    path: /var/tmp/openstack-backup/mysql
+    state: directory
+
+- name: Get the database root password
+  script: |
+    /bin/hiera -c /etc/puppet/hiera.yaml mysql::server::root_password
+  when: mysql_root_password is undefined
+  register: mysql_root_password_cmd_output
+  become: true
+
+- name: Convert the database root password if unknown
+  set_fact:
+    mysql_root_password: "{{ mysql_root_password_cmd_output.stdout_lines[0] }}"
+  when: mysql_root_password is undefined
+
+# Originally used the script module for this but it had issues with
+# command piping. Using a script to perform the MySQL dumps.
+- name: Create MySQL backup script
+  template:
+    src: backup_mysql.sh.j2
+    dest: /var/tmp/openstack-backup/mysql/backup_mysql.sh
+    mode: u+rwx
+
+- name: Run the MySQL backup script
+  command: /var/tmp/openstack-backup/mysql/backup_mysql.sh
+
+# The archive module is pretty limited. Using a script instead.
+- name: Archive the OpenStack databases
+  script: |
+    /bin/tar --ignore-failed-read --xattrs \
+      -zcf /var/tmp/openstack-backup/mysql/openstack-backup-mysql.tar \
+      /var/tmp/openstack-backup/mysql/*.sql
+
+- name: Copy the archive to the backup server
+  synchronize:
+    mode: pull
+    src: "/var/tmp/openstack-backup/mysql/openstack-backup-mysql.tar"
+    dest: "{{ backup_directory | default('~/.') }}"
+    set_remote_user: false
+    ssh_args: "-F /var/tmp/{{ ansible_hostname }}_config"
+  delegate_to: "{{ hostvars[groups[backup_server_hostgroup][0]]['inventory_hostname'] }}"
+
+- name: Remove the database backup directory
+  file:
+    path: /var/tmp/openstack-backup/mysql
+    state: absent

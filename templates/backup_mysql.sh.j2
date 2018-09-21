@@ -1,0 +1,5 @@
+#!/bin/bash
+
+mysql -uroot -p{{ mysql_root_password }} -s -N -e "select distinct table_schema from information_schema.tables where engine='innodb' and table_schema != 'mysql';" | xargs mysqldump -uroot -p{{ mysql_root_password }} --single-transaction --databases > /var/tmp/openstack-backup/mysql/openstack-backup-mysql.sql
+
+mysql -uroot -p{{ mysql_root_password }} -s -N -e "SELECT CONCAT('\"SHOW GRANTS FOR ''',user,'''@''',host,''';\"') FROM mysql.user where (length(user) > 0 and user NOT LIKE 'root')" | xargs -n1 mysql -uroot -p{{ mysql_root_password }} -s -N -e | sed 's/$/;/' > /var/tmp/openstack-backup/mysql/openstack-backup-mysql-grants.sql
