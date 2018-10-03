@@ -85,10 +85,23 @@ def run_module():
 
     services_to_restart = {i: service_map[i] for i in service_names}
 
-    container_list = [j for i in service_names
-                      for j in services_to_restart[i]['container_name']]
-    service_unit_list = [j for i in service_names
-                         for j in services_to_restart[i]['systemd_unit']]
+    container_list = []
+    for name in service_names:
+        try:
+            for item in services_to_restart[name]['container_name']:
+                container_list.append(item)
+        except KeyError:
+            # be tolerant if only a systemd unit is defined for the service
+            pass
+
+    service_unit_list = []
+    for svc_name in service_names:
+        try:
+            for i in services_to_restart[svc_name]['systemd_unit']:
+                service_unit_list.append(i)
+        except KeyError:
+            # be tolerant if only a container name is defined for the service
+            pass
 
     result = dict(
         ansible_facts=dict(
