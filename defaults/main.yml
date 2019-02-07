@@ -26,3 +26,10 @@ operations_logs:
 # Restart Service
 operations_services_to_restart: []
 operations_custom_service_map: {}
+
+
+# Backup
+backup_tmp_dir: /var/tmp/openstack-backup
+backup_directory: "/home/{{ ansible_user }}"
+backup_host: "{{ hostvars[groups[backup_server_hostgroup][0]]['inventory_hostname'] }}"
+backup_host_ssh_args: "-F /var/tmp/{{ ansible_hostname }}_config"

@@ -8,12 +8,12 @@
 
 - name: Remove any existing database backup directory
   file:
-    path: /var/tmp/openstack-backup/mysql
+    path: "{{ backup_tmp_dir }}/mysql"
     state: absent
 
 - name: Create a new MySQL database backup directory
   file:
-    path: /var/tmp/openstack-backup/mysql
+    path: "{{ backup_tmp_dir }}/mysql"
     state: directory
 
 - name: Get the database root password
@@ -33,29 +33,29 @@
 - name: Create MySQL backup script
   template:
     src: backup_mysql.sh.j2
-    dest: /var/tmp/openstack-backup/mysql/backup_mysql.sh
+    dest: "{{ backup_tmp_dir }}/mysql/backup_mysql.sh"
     mode: u+rwx
 
 - name: Run the MySQL backup script
-  command: /var/tmp/openstack-backup/mysql/backup_mysql.sh
+  command: "{{ backup_tmp_dir }}/mysql/backup_mysql.sh"
 
 # The archive module is pretty limited. Using a script instead.
 - name: Archive the OpenStack databases
   script: |
     /bin/tar --ignore-failed-read --xattrs \
-      -zcf /var/tmp/openstack-backup/mysql/openstack-backup-mysql.tar \
-      /var/tmp/openstack-backup/mysql/*.sql
+      -zcf {{ backup_tmp_dir }}/mysql/openstack-backup-mysql.tar \
+      {{ backup_tmp_dir }}/mysql/*.sql
 
 - name: Copy the archive to the backup server
   synchronize:
     mode: pull
-    src: "/var/tmp/openstack-backup/mysql/openstack-backup-mysql.tar"
-    dest: "{{ backup_directory | default('~/.') }}"
+    src: "{{ backup_tmp_dir }}/mysql/openstack-backup-mysql.tar"
+    dest: "{{ backup_directory }}"
     set_remote_user: false
-    ssh_args: "-F /var/tmp/{{ ansible_hostname }}_config"
-  delegate_to: "{{ hostvars[groups[backup_server_hostgroup][0]]['inventory_hostname'] }}"
+    ssh_args: "{{ backup_host_ssh_args }}"
+  delegate_to: "{{ backup_host }}"
 
 - name: Remove the database backup directory
   file:
-    path: /var/tmp/openstack-backup/mysql
+    path: "{{ backup_tmp_dir }}/mysql"
     state: absent

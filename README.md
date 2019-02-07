@@ -67,6 +67,15 @@ If using Docker:
 | `operations_custom_service_map` | `{}` | Dictionary of services and their systemd unit files, container names, and vhosts. This will be combined with the builtin list of services in `vars/main.yml`. |
 
 
+**Variables for backup**
+
+| Name              | Default Value       | Description          |
+|-------------------|---------------------|----------------------|
+| `backup_tmp_dir` | `/var/tmp/openstack-backup` | Temporary directory created on host to store backed up data. |
+| `backup_directory` | `/home/{{ ansible_user }}` | Directory on backup host where backup archive will be saved. |
+| `backup_host` | `{{ hostvars[groups[backup_server_hostgroup][0]]['inventory_hostname'] }}` | Backup host where data will be archived.|
+| `backup_host_ssh_args` | `-F /var/tmp/{{ ansible_hostname }}_config` | ssh arguments used for connectiong to backup host. |
+
 ## Dependencies ##
 
 None

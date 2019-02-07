@@ -1,0 +1,6 @@
+#!/bin/bash
+
+pushd {{ backup_tmp_dir }}/pcs
+pcs cluster cib cib.xml
+pcs config backup pacemaker_backup
+popd

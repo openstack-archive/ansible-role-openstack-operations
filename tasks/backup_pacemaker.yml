@@ -1,0 +1,41 @@
+# Tasks for backing up Pacemaker configuration
+
+- name: Remove any existing Pacemaker backup directory
+  file:
+    path: "{{ backup_tmp_dir }}/pcs"
+    state: absent
+
+- name: Create a new Pacemaker backup directory
+  file:
+    path: "{{ backup_tmp_dir }}/pcs"
+    state: directory
+
+- name: Create Pacemaker backup script
+  template:
+    src: backup_pacemaker.sh.j2
+    dest: "{{ backup_tmp_dir }}/pcs/backup_pacemaker.sh"
+    mode: u+rwx
+
+- name: Run the Pacemaker backup script
+  command: "{{ backup_tmp_dir }}/pcs/backup_pacemaker.sh"
+
+- name: Archive the Pacemaker configuration
+  script: |
+    /bin/tar --ignore-failed-read --xattrs \
+      -zcf {{ backup_tmp_dir }}/pcs/openstack-backup-pacemaker.tar \
+      {{ backup_tmp_dir }}/pcs/cib.xml \
+      {{ backup_tmp_dir }}/pcs/pacemaker_backup.tar.bz2
+
+- name: Copy the archive to the backup server
+  synchronize:
+    mode: pull
+    src: "{{ backup_tmp_dir }}/pcs/openstack-backup-pacemaker.tar"
+    dest: "{{ backup_directory }}"
+    set_remote_user: false
+    ssh_args: "{{ backup_host_ssh_args }}"
+  delegate_to: "{{ backup_host }}"
+
+- name: Remove the database backup directory
+  file:
+    path: "{{ backup_tmp_dir }}/pcs"
+    state: absent
