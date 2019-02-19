@@ -31,6 +31,9 @@ MySQL/Galera
 * Target Hosts needs access to the `mysql` package. Tasks in the backup and restore files will attempt to install it.
 * When restoring to Galera, the Control Host requires the `pacemaker_resource` module. You can obtain this module from the `ansible-pacemaker` RPM. If your operating system does not have access to this package, you can clone the [ansible-pacemaker git repo](https://github.com/redhat-openstack/ansible-pacemaker). When running a restore playbook, include the `ansible-pacemaker` module using the `-M` option (e.g. `ansible-playbook -M /usr/share/ansible-modules ...`)
 
+Filesystem
+* It has no special requirements, only the `tar` command is going to be used.
+
 ## Task Files ##
 
 The following is a list of the task files used in the backup and restore process.
@@ -43,6 +46,7 @@ Initialization Tasks:
 
 Backup Tasks:
 * `backup_mysql.yml` - Performs a backup of the OpenStack MySQL data and grants, archives them, and sends them to the desired backup host.
+* `backup_filesystem.yml` - Creates a tar file of a list of files/directories given and sends then to a desired backup host.
 
 Restore Tasks:
 * `restore_galera.yml` - Performs a restore of the OpenStack MySQL data and grants on a containerized galera cluster. This involves shutting down the current galera cluster, creating a brand new MySQL database, then importing the data and grants from the archive. In addition, the playbook saves a copy of the old data in case the restore process fails.
@@ -67,6 +71,11 @@ MySQL and galera backup and restore variables:
 * `mysql_root_password` - The original root password to access the database. If unsent, it checks the Puppet hieradata for the password.
 * `mysql_clustercheck_password` - The original password for the clustercheck user. If unsent, it checks the Puppet hieradata for the password.
 * `galera_container_image` - The image to use for the temporary container to restore the galera database. If unset, it tries to determine the image from the existing galera container.
+
+Filesystem backup variables:
+* `backup_dirs` - List of the files to backup.
+* `baclup_exclude` - List of the files that where not included on the backup.
+* `backup_file` - The end of the backup file name.
 
 ## Inventory and Playbooks ##
 
@@ -239,3 +248,59 @@ Restore Playbook:
 ~~~~
 
 In This situation, we do not include the `disable_ssh` tasks since this would disable access from the Control Host to the OpenStack nodes for future Ansible operations.
+
+
+### Backup filesystem from controller ###
+
+Inventory file
+~~~~
+[backup]
+undercloud-0 ansible_connection=local
+
+[filesystem]
+controller-0 ansible_user=heat-admin ansible_host=192.168.24.6
+controller-1 ansible_user=heat-admin ansible_host=192.168.24.20
+controller-2 ansible_user=heat-admin ansible_host=192.168.24.8
+
+[all:vars]
+backup_directory="/var/tmp/backup"
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+~~~~
+
+Filesystem Backup Playbook:
+~~~~
+---
+- name: Initialize backup host
+  hosts: "{{ backup_hosts | default('backup') }}[0]"
+  tasks:
+    - import_role:
+        name: ansible-role-openstack-operations
+        tasks_from: initialize_backup_host
+
+- name: Backup Filesystem
+  hosts: "{{ target_hosts | default('filesystem') }}"
+  become: yes
+  vars:
+    backup_server_hostgroup: "{{ backup_hosts | default('backup') }}"
+    backup_file: "filesystem.bck.tar"
+    backup_dirs:
+      - /etc
+      - /var/lib/nova
+      - /var/lib/glance
+      - /var/lib/heat-config
+      - /var/lib/heat-cfntools
+      - /var/lib/openvswitch
+      - /var/lib/config-data
+      - /var/lib/tripleo-config
+      - /srv/node
+      - /usr/libexec/os-apply-config/
+      - /root
+  tasks:
+    - import_role:
+        name: ansible-role-openstack-operations
+        tasks_from: enable_ssh
+    - import_role:
+        name: ansible-role-openstack-operations
+        tasks_from: backup_filesystem
+~~~~
+
