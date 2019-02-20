@@ -1,0 +1,1 @@
+https://github.com/redhat-openstack/ansible-pacemaker.git

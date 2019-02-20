@@ -44,13 +44,13 @@
   file:
     path: /var/tmp/openstack-backup/mysql
     state: absent
-  when: bootstrap_node == true
+  when: bootstrap_node | bool
 
 - name: Create a new mysql database backup directory
   file:
     path: /var/tmp/openstack-backup/mysql
     state: directory
-  when: bootstrap_node == true
+  when: bootstrap_node | bool
 
 - name: Copy MySQL backup archive from the backup server
   synchronize:
@@ -60,14 +60,14 @@
     set_remote_user: false
     ssh_args: "-F /var/tmp/{{ ansible_hostname }}_config"
   delegate_to: "{{ hostvars[groups[backup_server_hostgroup][0]]['inventory_hostname'] }}"
-  when: bootstrap_node == true
+  when: bootstrap_node | bool
 
 - name: Unarchive the database archive
   script: |
     /bin/tar --xattrs \
       -zxf /var/tmp/openstack-backup/mysql/openstack-backup-mysql.tar \
       -C /
-  when: bootstrap_node == true
+  when: bootstrap_node | bool
 
 - name: Get the database bind host IP on each node
   script: |
@@ -91,7 +91,7 @@
     state: disable
     wait_for_resource: true
   become: true
-  when: bootstrap_node == true
+  when: bootstrap_node | bool
 
 - name: Get a timestamp
   set_fact:
@@ -143,7 +143,7 @@
     state: enable
     wait_for_resource: true
   become: true
-  when: bootstrap_node == true
+  when: bootstrap_node | bool
 
 - name: Perform a local database port check
   wait_for:
@@ -153,12 +153,12 @@
 - name: Import OpenStack MySQL data
   script: |
     /bin/mysql -u root -p{{ mysql_root_password }} < /var/tmp/openstack-backup/mysql/openstack-backup-mysql.sql
-  when: bootstrap_node == true
+  when: bootstrap_node | bool
 
 - name: Import OpenStack MySQL grants data
   script: |
     /bin/mysql -u root -p{{ mysql_root_password }} < /var/tmp/openstack-backup/mysql/openstack-backup-mysql-grants.sql
-  when: bootstrap_node == true
+  when: bootstrap_node | bool
 
 - name: Re-enable the database port externally
   iptables:
