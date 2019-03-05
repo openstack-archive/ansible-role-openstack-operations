@@ -17,7 +17,7 @@
     state: directory
 
 - name: Get the database root password
-  script: |
+  shell: |
     /bin/hiera -c /etc/puppet/hiera.yaml mysql::server::root_password
   when: mysql_root_password is undefined
   register: mysql_root_password_cmd_output
@@ -41,7 +41,7 @@
 
 # The archive module is pretty limited. Using a script instead.
 - name: Archive the OpenStack databases
-  script: |
+  shell: |
     /bin/tar --ignore-failed-read --xattrs \
       -zcf {{ backup_tmp_dir }}/mysql/openstack-backup-mysql.tar \
       {{ backup_tmp_dir }}/mysql/*.sql
