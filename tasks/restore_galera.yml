@@ -17,7 +17,7 @@
   when: galera_container_image is undefined
 
 - name: Get the database root password
-  script: |
+  shell: |
     /bin/hiera -c /etc/puppet/hiera.yaml mysql::server::root_password
   when: mysql_root_password is undefined
   register: mysql_root_password_cmd_output
@@ -29,7 +29,7 @@
   when: mysql_root_password is undefined
 
 - name: Get the database clustercheck password
-  script: |
+  shell: |
     /bin/hiera -c /etc/puppet/hiera.yaml mysql_clustercheck_password
   when: mysql_clustercheck_password is undefined
   register: mysql_clustercheck_password_cmd_output
@@ -63,14 +63,14 @@
   when: bootstrap_node | bool
 
 - name: Unarchive the database archive
-  script: |
+  shell: |
     /bin/tar --xattrs \
       -zxf /var/tmp/openstack-backup/mysql/openstack-backup-mysql.tar \
       -C /
   when: bootstrap_node | bool
 
 - name: Get the database bind host IP on each node
-  script: |
+  shell: |
     /bin/hiera -c /etc/puppet/hiera.yaml mysql_bind_host
   when: mysql_bind_host is undefined
   register: mysql_bind_host
@@ -151,12 +151,12 @@
     host: "{{ mysql_bind_host.stdout|trim }}"
 
 - name: Import OpenStack MySQL data
-  script: |
+  shell: |
     /bin/mysql -u root -p{{ mysql_root_password }} < /var/tmp/openstack-backup/mysql/openstack-backup-mysql.sql
   when: bootstrap_node | bool
 
 - name: Import OpenStack MySQL grants data
-  script: |
+  shell: |
     /bin/mysql -u root -p{{ mysql_root_password }} < /var/tmp/openstack-backup/mysql/openstack-backup-mysql-grants.sql
   when: bootstrap_node | bool
 

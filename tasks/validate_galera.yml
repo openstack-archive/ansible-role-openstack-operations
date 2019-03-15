@@ -1,5 +1,5 @@
 - name: Get the database clustercheck password
-  script: |
+  shell: |
     /bin/hiera -c /etc/puppet/hiera.yaml mysql_clustercheck_password
   when: mysql_clustercheck_password is undefined
   register: mysql_clustercheck_password_cmd_output

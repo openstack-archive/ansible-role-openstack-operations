@@ -20,7 +20,7 @@
   command: "{{ backup_tmp_dir }}/pcs/backup_pacemaker.sh"
 
 - name: Archive the Pacemaker configuration
-  script: |
+  shell: |
     /bin/tar --ignore-failed-read --xattrs \
       -zcf {{ backup_tmp_dir }}/pcs/openstack-backup-pacemaker.tar \
       {{ backup_tmp_dir }}/pcs/cib.xml \
