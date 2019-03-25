@@ -22,11 +22,13 @@
   when: mysql_root_password is undefined
   register: mysql_root_password_cmd_output
   become: true
+  no_log: true
 
 - name: Convert the database root password variable if unknown
   set_fact:
     mysql_root_password: "{{ mysql_root_password_cmd_output.stdout_lines[0] }}"
   when: mysql_root_password is undefined
+  no_log: true
 
 - name: Get the database clustercheck password
   shell: |
@@ -34,11 +36,13 @@
   when: mysql_clustercheck_password is undefined
   register: mysql_clustercheck_password_cmd_output
   become: true
+  no_log: true
 
 - name: Convert the database clustercheck password variable if unknown
   set_fact:
     mysql_clustercheck_password: "{{ mysql_clustercheck_password_cmd_output.stdout_lines[0] }}"
   when: mysql_clustercheck_password is undefined
+  no_log: true
 
 - name: Remove any existing database backup directory
   file:
@@ -151,14 +155,16 @@
     host: "{{ mysql_bind_host.stdout|trim }}"
 
 - name: Import OpenStack MySQL data
-  shell: |
+  command: |
     /bin/mysql -u root -p{{ mysql_root_password }} < /var/tmp/openstack-backup/mysql/openstack-backup-mysql.sql
   when: bootstrap_node | bool
+  no_log: true
 
 - name: Import OpenStack MySQL grants data
-  shell: |
+  command: |
     /bin/mysql -u root -p{{ mysql_root_password }} < /var/tmp/openstack-backup/mysql/openstack-backup-mysql-grants.sql
   when: bootstrap_node | bool
+  no_log: true
 
 - name: Re-enable the database port externally
   iptables:

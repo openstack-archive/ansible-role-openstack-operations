@@ -22,11 +22,13 @@
   when: mysql_root_password is undefined
   register: mysql_root_password_cmd_output
   become: true
+  no_log: true
 
 - name: Convert the database root password if unknown
   set_fact:
     mysql_root_password: "{{ mysql_root_password_cmd_output.stdout_lines[0] }}"
   when: mysql_root_password is undefined
+  no_log: true
 
 # Originally used the script module for this but it had issues with
 # command piping. Using a script to perform the MySQL dumps.
