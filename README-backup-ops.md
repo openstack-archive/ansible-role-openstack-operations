@@ -3,7 +3,7 @@
 The `openstack-operations` role includes some foundational backup and restore Ansible tasks to help with automatically backing up and restoring OpenStack services. The current services available to backup and restore include:
 
 * MySQL on a galera cluster
-* More coming soon...
+* Redis
 
 Scenarios tested:
 
@@ -34,6 +34,10 @@ MySQL/Galera
 Filesystem
 * It has no special requirements, only the `tar` command is going to be used.
 
+Redis
+* Target Hosts needs access to the `redis` package. Tasks in the backup and restore files will attempt to install it.
+* When restoring Redis, the Control Host requires the `pacemaker_resource` module. You can obtain this module from the `ansible-pacemaker` RPM. If your operating system does not have access to this package, you can clone the [ansible-pacemaker git repo](https://github.com/redhat-openstack/ansible-pacemaker). When running a restore playbook, include the `ansible-pacemaker` module using the `-M` option (e.g. `ansible-playbook -M /usr/share/ansible-modules ...`)
+
 ## Task Files ##
 
 The following is a list of the task files used in the backup and restore process.
@@ -47,12 +51,15 @@ Initialization Tasks:
 Backup Tasks:
 * `backup_mysql.yml` - Performs a backup of the OpenStack MySQL data and grants, archives them, and sends them to the desired backup host.
 * `backup_filesystem.yml` - Creates a tar file of a list of files/directories given and sends then to a desired backup host.
+* `backup_redis.yml` - Performs a backup of Redis data from one node, archives them, and sends them to the desired backup host.
 
 Restore Tasks:
 * `restore_galera.yml` - Performs a restore of the OpenStack MySQL data and grants on a containerized galera cluster. This involves shutting down the current galera cluster, creating a brand new MySQL database, then importing the data and grants from the archive. In addition, the playbook saves a copy of the old data in case the restore process fails.
+* `restore_redis.yml` - Performs a restore of Redis data from one node to all nodes and resets the permissions using a redis container.
 
 Validation Tasks:
 * `validate_galera.yml` - Performs the equivalent of `clustercheck` i.e. checks the `wsrep_local_state` is 4 ("Synced").
+* `validate_galera.yml` - Performs a Redis check with `redis-cli ping`.
 
 ## Variables ##
 
@@ -76,6 +83,11 @@ Filesystem backup variables:
 * `backup_dirs` - List of the files to backup.
 * `baclup_exclude` - List of the files that where not included on the backup.
 * `backup_file` - The end of the backup file name.
+
+Redis backup and restore variables:
+* `redis_vip` - The VIP address of the Redis cluster.  If unsent, it checks the Puppet hieradata for the VIP.
+* `redis_matherauth_password` - The master password for the Redis cluster.  If unsent, it checks the Puppet hieradata for the password.
+* `redis_container_image` - The image to use for the temporary container that restores the permissions to the Redis data directory. If unset, it tries to determine the image from the existing redis container.
 
 ## Inventory and Playbooks ##
 
@@ -105,7 +117,7 @@ The process for your playbook depends largely on whether you want to backup or r
 
 The following examples show how to use the backup and restore tasks.
 
-### Backup and restore galera to a remote backup server ###
+### Backup and restore galera and redis to a remote backup server ###
 
 This example shows how to backup data to the `root` user on a remote backup server, and then restore it. The inventory file for both functions are the same:
 
@@ -114,6 +126,11 @@ This example shows how to backup data to the `root` user on a remote backup serv
 192.0.2.250 ansible_user=root
 
 [mysql]
+192.0.2.101 ansible_user=heat-admin
+192.0.2.102 ansible_user=heat-admin
+192.0.2.103 ansible_user=heat-admin
+
+[redis]
 192.0.2.101 ansible_user=heat-admin
 192.0.2.102 ansible_user=heat-admin
 192.0.2.103 ansible_user=heat-admin
@@ -143,6 +160,21 @@ Backup Playbook:
     - import_role:
         name: ansible-role-openstack-operations
         tasks_from: backup_mysql
+    - import_role:
+        name: ansible-role-openstack-operations
+        tasks_from: disable_ssh
+
+- name: Backup Redis database
+  hosts: "{{ target_hosts | default('redis') }}[0]"
+  vars:
+    backup_server_hostgroup: "{{ backup_hosts | default('backup') }}"
+  tasks:
+    - import_role:
+        name: ansible-role-openstack-operations
+        tasks_from: enable_ssh
+    - import_role:
+        name: ansible-role-openstack-operations
+        tasks_from: backup_redis
     - import_role:
         name: ansible-role-openstack-operations
         tasks_from: disable_ssh
@@ -177,11 +209,29 @@ Restore Playbook:
     - import_role:
         name: ansible-role-openstack-operations
         tasks_from: disable_ssh
+
+- name: Restore Redis data
+  hosts: "{{ target_hosts | default('redis') }}"
+  vars:
+    backup_server_hostgroup: "{{ backup_hosts | default('backup') }}"
+  tasks:
+    - import_role:
+        name: ansible-role-openstack-operations
+        tasks_from: set_bootstrap
+    - import_role:
+        name: ansible-role-openstack-operations
+        tasks_from: enable_ssh
+    - import_role:
+        name: ansible-role-openstack-operations
+        tasks_from: restore_redis
+    - import_role:
+        name: ansible-role-openstack-operations
+        tasks_from: disable_ssh
 ~~~~
 
 We include the bootstrap tasks with the backup since all Target Hosts are required for the restore but only certain operations are performed on one of the hosts.
 
-### Backup and restore galera to a combined control/backup host ###
+### Backup and restore galera and redis to a combined control/backup host ###
 
 This example shows how to back to a directory on the Control Host using the same user. In this case, we use the `stack` user for both Ansible and rsync operations. We also use the `heat-admin` user to access the OpenStack nodes. Both the backup and restore operations use the same inventory file:
 
@@ -190,6 +240,11 @@ This example shows how to back to a directory on the Control Host using the same
 localhost ansible_user=stack
 
 [mysql]
+192.0.2.101 ansible_user=heat-admin
+192.0.2.102 ansible_user=heat-admin
+192.0.2.103 ansible_user=heat-admin
+
+[redis]
 192.0.2.101 ansible_user=heat-admin
 192.0.2.102 ansible_user=heat-admin
 192.0.2.103 ansible_user=heat-admin
@@ -219,6 +274,15 @@ Backup Playbook:
     - import_role:
         name: ansible-role-openstack-operations
         tasks_from: backup_mysql
+
+- name: Backup Redis database
+  hosts: "{{ target_hosts | default('redis') }}[0]"
+  vars:
+    backup_server_hostgroup: "{{ backup_hosts | default('backup') }}"
+  tasks:
+    - import_role:
+        name: ansible-role-openstack-operations
+        tasks_from: backup_redis
 ~~~~
 
 Restore Playbook:
@@ -245,6 +309,21 @@ Restore Playbook:
     - import_role:
         name: ansible-role-openstack-operations
         tasks_from: restore_galera
+
+- name: Restore MySQL database on galera cluster
+  hosts: "{{ target_hosts | default('redis') }}"
+  vars:
+    backup_server_hostgroup: "{{ backup_hosts | default('backup') }}"
+  tasks:
+    - import_role:
+        name: ansible-role-openstack-operations
+        tasks_from: set_bootstrap
+    - import_role:
+        name: ansible-role-openstack-operations
+        tasks_from: enable_ssh
+    - import_role:
+        name: ansible-role-openstack-operations
+        tasks_from: restore_redis
 ~~~~
 
 In This situation, we do not include the `disable_ssh` tasks since this would disable access from the Control Host to the OpenStack nodes for future Ansible operations.

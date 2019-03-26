@@ -1,0 +1,100 @@
+# Tasks for restoring Redis backups on a cluster
+
+- name: Make sure Redis client is installed on the Target Hosts
+  yum:
+    name: redis
+    state: installed
+
+- name: Get the Redis container image if not user-defined
+  command: "/bin/bash docker ps --filter name=.*redis.* --format='{{ '{{' }} .Image {{ '}}' }}'"
+  when: redis_container_image is undefined
+  register: redis_container_image_cmd_output
+  become: true
+
+- name: Convert the Redis container image variable if unknown
+  set_fact:
+    redis_container_image: "{{ redis_container_image_cmd_output.stdout_lines[0] }}"
+  when: redis_container_image is undefined
+
+- name: Get the Redis VIP
+  shell: |
+    /bin/hiera -c /etc/puppet/hiera.yaml redis_vip
+  when: redis_vip is undefined
+  register: redis_vip_cmd_output
+  become: true
+
+- name: Convert the Redis VIP if unknown
+  set_fact:
+    redis_vip: "{{ redis_vip_cmd_output.stdout_lines[0] }}"
+  when: redis_vip is undefined
+
+- name: Remove any existing Redis backup directory
+  file:
+    path: "{{ backup_tmp_dir }}/redis"
+    state: absent
+
+- name: Create a new Redis backup directory
+  file:
+    path: "{{ backup_tmp_dir }}/redis"
+    state: directory
+
+- name: Copy Redis backup archive from the backup server
+  synchronize:
+    mode: push
+    src: "{{ backup_directory }}/openstack-backup-redis.tar"
+    dest: "{{ backup_tmp_dir }}/redis/"
+    set_remote_user: false
+    ssh_args: "{{ backup_host_ssh_args }}"
+  delegate_to: "{{ backup_host }}"
+
+- name: Unarchive the database archive
+  shell: |
+    /bin/tar --xattrs \
+      -zxf {{ backup_tmp_dir }}/redis/openstack-backup-redis.tar \
+      -C /
+
+- name: Disable redis-bundle
+  pacemaker_resource:
+    resource: redis-bundle
+    state: disable
+    wait_for_resource: true
+  become: true
+  when: bootstrap_node | bool
+
+- name: Delete the old Redis dump
+  file:
+    path: /var/lib/redis/dump.rdb
+    state: absent
+  become: true
+
+- name: Copy the new Redis dump
+  copy:
+    src: "{{ backup_tmp_dir }}/redis/dump.rdb"
+    dest: /var/lib/redis/dump.rdb
+    remote_src: yes
+  become: true
+
+- name: Create a redis_restore container to restore container-based permissions
+  docker_container:
+    name: redis_restore
+    user: root
+    detach: false
+    command: "/usr/bin/chown -R redis: /var/lib/redis"
+    image: "{{ redis_container_image }}"
+    volumes:
+      - /var/lib/redis:/var/lib/redis:rw
+  become: true
+
+- name: Remove redis_restore container
+  docker_container:
+    name: redis_restore
+    state: absent
+  become: true
+
+- name: Enable redis
+  pacemaker_resource:
+    resource: redis-bundle
+    state: enable
+    wait_for_resource: true
+  become: true
+  when: bootstrap_node | bool
