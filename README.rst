@@ -1,9 +1,11 @@
-# OpenStack Operations #
+OpenStack Operations
+====================
 
 
 Perform various common OpenStack operations by calling this role with an action and appropriate variables.
 
-## Restart Services ##
+Restart Services
+----------------
 
 Restarting OpenStack services is complex. This role aims to intelligently evaluate the environment and determine how a service is running, what components constitute that service, and restart those components appropriately. This allows the operator to think in terms of the service that needs restarting rather than having to remember all the details required to restart that service.
 
@@ -11,13 +13,15 @@ This role uses a service map located in `vars/main.yml`. The service map is a di
 
 The `service_map_facts` module will evalute the target system and return a list of services or containers that need to be restarted. Those lists will then be used in subsequent tasks to restart a service or a container.
 
-## Fetch Logs ##
+Fetch Logs
+----------
 
 To fetch logs with this role, use the `fetch_logs.yml` tasks file. By default, every log file in `/var/log` matching the `*.log` pattern will be fetched from the remote and put into a folder adjacent to the playbook named for each host, preserving the directory structure as found on the remote host.
 
 See `defaults/main.yml` for the dictionary of options to control logs that are fetched.
 
-## Cleanup Container Items ##
+Cleanup Container Items
+-----------------------
 
 **WARNING:** This will delete images, containers, and volumes from the target system(s).
 
@@ -27,11 +31,13 @@ This role includes modules for listing image, volume, and container IDs. The fil
 
 If using Docker, see these guides for [images](https://docs.docker.com/engine/reference/commandline/images/#filtering), [containers](https://docs.docker.com/engine/reference/commandline/ps/#filtering), and [volumes](https://docs.docker.com/engine/reference/commandline/volume_ls/#filtering) for filter options.
 
-## Backup and Restore Operations ##
+Backup and Restore Operations
+-----------------------------
 
 See [Backup and Restore Operations](README-backup-ops.md) for more details.
 
-## Requirements ##
+Requirements
+------------
 
   - ansible >= 2.4
 
@@ -40,50 +46,89 @@ If using Docker:
   - docker-py >= 1.7.0
   - Docker API >= 1.20
 
-## Role Variables ##
+Role Variables
+--------------
 
 
-**Variables used for cleaning up Docker**
+.. list-table:: Variables used for cleaning up Docker
+   :widths: auto
+   :header-rows: 1
 
-| Name              | Default Value       | Description          |
-|-------------------|---------------------|----------------------|
-| `operations_container_runtime` | `docker` | Container runtime to use. Currently supports `docker` and `podman`. |
-| `operations_image_filter` | `['dangling=true']` | List of image filters. |
-| `operations_volume_filter` | `['dangling=true']` | List of volume filters. |
-| `operations_container_filter` | `['status=exited', 'status=dead']` | List of container filters. |
+   * - Name
+     - Default Value
+     - Description
+   * - `operations_container_runtime`
+     - `docker`
+     - Container runtime to use. Currently supports `docker` and `podman`.
+   * - `operations_image_filter`
+     - `['dangling=true']`
+     - List of image filters.
+   * - `operations_volume_filter`
+     - `['dangling=true']`
+     - List of volume filters.
+   * - `operations_container_filter`
+     - `['status=exited', 'status=dead']`
+     - List of container filters.
 
-**Variables for fetching logs**
+.. list-table:: Variables for fetching logs
+   :widths: auto
+   :header-rows: 1
 
-| Name              | Default Value       | Description          |
-|-------------------|---------------------|----------------------|
-| `operations_log_destination` | `{{ playbook_dir }}` | Path where logs will be stored when fetched from remote systems. |
+   * - Name
+     - Default Value
+     - Description
+   * - `operations_log_destination`
+     - `{{ playbook_dir }}`
+     - Path where logs will be stored when fetched from remote systems.
+
+.. list-table:: Variables for restarting services
+   :widths: auto
+   :header-rows: 1
+
+   * - Name
+     - Default Value
+     - Description
+   * - `operations_services_to_restart`
+     - `[]`
+     - List of services to restart on target systems.
+   * - `operations_custom_service_map`
+     - `{}`
+     - Dictionary of services and their systemd unit files, container names, and vhosts. This will be combined with the builtin list of services in `vars/main.yml`.
 
 
-**Variables for restarting services**
+.. list-table:: Variables for backup
+   :widths: auto
+   :header-rows: 1
 
-| Name              | Default Value       | Description          |
-|-------------------|---------------------|----------------------|
-| `operations_services_to_restart` | `[]` | List of services to restart on target systems. |
-| `operations_custom_service_map` | `{}` | Dictionary of services and their systemd unit files, container names, and vhosts. This will be combined with the builtin list of services in `vars/main.yml`. |
+   * - Name
+     - Default Value
+     - Description
+   * - `backup_tmp_dir`
+     - `/var/tmp/openstack-backup`
+     - Temporary directory created on host to store backed up data.
+   * - `backup_directory`
+     - `/home/{{ ansible_user }}`
+     - Directory on backup host where backup archive will be saved.
+   * - `backup_host`
+     - `{{ hostvars[groups[backup_server_hostgroup][0]]['inventory_hostname'] }}`
+     - Backup host where data will be archived.
+   * - `backup_host_ssh_args`
+     - `-F /var/tmp/{{ ansible_hostname }}_config`
+     - ssh arguments used for connectiong to backup host.
 
-
-**Variables for backup**
-
-| Name              | Default Value       | Description          |
-|-------------------|---------------------|----------------------|
-| `backup_tmp_dir` | `/var/tmp/openstack-backup` | Temporary directory created on host to store backed up data. |
-| `backup_directory` | `/home/{{ ansible_user }}` | Directory on backup host where backup archive will be saved. |
-| `backup_host` | `{{ hostvars[groups[backup_server_hostgroup][0]]['inventory_hostname'] }}` | Backup host where data will be archived.|
-| `backup_host_ssh_args` | `-F /var/tmp/{{ ansible_hostname }}_config` | ssh arguments used for connectiong to backup host. |
-
-## Dependencies ##
+Dependencies
+------------
 
 None
 
-## Example Playbooks ##
+Example Playbooks
+-----------------
 
 
-### Restart Services ###
+Restart Services playbook
+~~~~~~~~~~~~~~~~---------
+
+.. code-block::
 
     - hosts: all
       tasks:
@@ -98,7 +143,10 @@ None
               - mariadb
 
 
-### Cleanup Container Items ###
+Cleanup Container Items playbook
+~~~~~~~~~~~~~~~~~~~~~~~---------
+
+.. code-block::
 
     - name: Cleanup dangling and dead images, containers, and volumes
       hosts: all
@@ -125,7 +173,10 @@ None
 
 
 
-### Fetch Logs ###
+Fetch Logs playbook
+~~~~~~~~~~---------
+
+.. code-block::
 
     - hosts: all
       tasks:
