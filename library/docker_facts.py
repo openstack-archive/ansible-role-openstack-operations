@@ -116,7 +116,7 @@ docker:
         type: list
 """
 
-from ansible.module_utils.docker_common import AnsibleDockerClient
+from ansible.module_utils.docker_common import AnsibleDockerClient  # noqa: E402,E501
 
 
 def _list_or_dict(value):
