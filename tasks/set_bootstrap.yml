@@ -1,8 +1,0 @@
-- name: Set bootstrap status to false on all nodes
-  set_fact:
-    bootstrap_node: false
-
-- name: Set the bootstrap status on the first node
-  set_fact:
-    bootstrap_node: true
-  when: inventory_hostname == ansible_play_hosts[0]

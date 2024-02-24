@@ -1,7 +1,0 @@
-- name: Ensure a valid container runtime is used
-  assert:
-    msg: Invalid container runtime specified. Only 'docker' and 'podman' are valid.
-    that:
-      - operations_container_runtime in ['docker', 'podman']
-
-- include_tasks: "{{ operations_container_runtime }}.yml"
